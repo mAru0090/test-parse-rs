@@ -72,24 +72,21 @@ pub enum DataValue {
     Null,
 }
 
+#[derive(Debug)]
+pub enum Expected {
+    Str(&'static str),
+    Char(char),
+    Token(Token),
+}
+
 #[derive(Error, Debug)]
 pub enum CompileError {
     #[error("Expected character: `{expected}`, but found `{found}`.")]
-    UnexpectedCharacter {
-        expected: char,
-        found: char,
-    },
+    UnexpectedCharacter { expected: char, found: char },
 
     #[error("Unexpected token: `{token}` on line {line}.")]
-    UnexpectedToken {
-        token: String,
-        line: usize,
-    },
+    UnexpectedToken { token: String, line: usize },
 
     #[error("Generic compile error: {0}")]
     Generic(String),
 }
-
-
-
-

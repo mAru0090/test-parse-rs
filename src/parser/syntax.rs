@@ -46,12 +46,22 @@ fn extract_char(input: &str) -> Option<char> {
         None
     }
 }
+
 pub struct Parser<'a> {
     lexer: logos::Lexer<'a, Token>,
     current: Option<Token>,
 }
 
 impl<'a> Parser<'a> {
+    pub fn expect_error(&mut self, expected: Expected) {
+        let found = self.lexer.slice();
+        match expected {
+            Expected::Str(s) if found == s => {}
+            Expected::Char(c) if found == c.to_string() => {}
+            _ => panic!("Expected {:?}, but found {:?}.", expected, found),
+        }
+    }
+
     pub fn new(input: &'a str) -> Self {
         let mut lexer = Token::lexer(input);
         let current = lexer.next().and_then(|res| res.ok());
@@ -85,13 +95,17 @@ impl<'a> Parser<'a> {
             return match token {
                 Token::Ident => {
                     //debug!("keyword: {:?}", self.lexer.slice());
+                    self.expect_error(Expected::Str("let"));
                     self.advance(); // let keyword skip
 
                     //debug!("var_name: {:?}", self.lexer.slice());
+                    
                     let ident = self.lexer.slice();
+
                     self.advance(); // ident skip
 
                     let data_type = if self.lexer.slice() == ":" {
+                        self.expect_error(Expected::Str(":"));
                         self.advance(); // colon skip
                         Some(self.lexer.slice())
                     } else {
@@ -103,6 +117,7 @@ impl<'a> Parser<'a> {
                         self.advance(); // = skip
                         self.advance(); // = skip
                     } else {
+                        self.expect_error(Expected::Str("="));
                         self.advance(); // = skip
                     }
 
