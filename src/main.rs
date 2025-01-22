@@ -14,7 +14,6 @@ struct Args {
     /// Dev test flag (optional)
     #[arg(long)]
     dev_test: bool,
-
     /// Execute argument
     #[arg(short, long, required = false)]
     execute: Option<String>, // `Option<String>`にして、ない場合も対応

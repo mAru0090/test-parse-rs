@@ -2,7 +2,7 @@ use anyhow::Result as R;
 use log::*;
 use logos::Logos;
 use simple_logger::SimpleLogger;
-
+use thiserror::Error;
 #[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
 pub enum Token {
@@ -71,3 +71,25 @@ pub enum DataValue {
     Char(char),
     Null,
 }
+
+#[derive(Error, Debug)]
+pub enum CompileError {
+    #[error("Expected character: `{expected}`, but found `{found}`.")]
+    UnexpectedCharacter {
+        expected: char,
+        found: char,
+    },
+
+    #[error("Unexpected token: `{token}` on line {line}.")]
+    UnexpectedToken {
+        token: String,
+        line: usize,
+    },
+
+    #[error("Generic compile error: {0}")]
+    Generic(String),
+}
+
+
+
+
