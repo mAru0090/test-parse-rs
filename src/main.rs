@@ -1,25 +1,22 @@
-
-
 mod parser;
+mod traits;
 mod types;
-
+use crate::parser::syntax::Parser;
 use anyhow::Result as R;
 use log::*;
 use logos::Logos;
 use simple_logger::SimpleLogger;
-use crate::parser::syntax::Parser;
-
 
 fn main() -> R<()> {
     SimpleLogger::new().init()?;
-    let input = "(3 + 5) * (2 + 4)";
+    let input = r#" let a = """#;
     let mut parser = Parser::new(input);
 
     if let Some(ast) = parser.expr() {
-        println!("AST: {:?}", ast);
-        println!("Result: {}", ast.eval());
+        debug!("AST: {:?}", ast);
+        debug!("Result: {:?}", ast.eval());
     } else {
-        println!("Failed to parse expression");
+        error!("Failed to parse expression");
     }
 
     Ok(())
