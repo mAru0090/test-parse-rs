@@ -25,7 +25,7 @@ fn main() -> anyhow::Result<()> {
 
     // dev_testがtrueならexecuteはオプションとして扱う
     let input = if args.dev_test {
-        r#" let a  =(100+2)*(1+2)"#
+        r#"asa = 1"#
     } else {
         if let Some(execute) = args.execute {
             &execute.clone()

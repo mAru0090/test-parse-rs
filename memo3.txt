@@ -166,3 +166,43 @@ fn main() -> R<()> {
 
     Ok(())
 }
+
+
+/*
+#[derive(Logos, Debug, PartialEq, Clone)]
+#[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
+pub enum Token {
+    #[token("(")]
+    LParent,
+    #[token(")")]
+    RParent,
+    #[token("=")]
+    Equal,
+    #[token("+")]
+    Add,
+    #[token("-")]
+    Sub,
+    #[token("*")]
+    Mul,
+    #[token("/")]
+    Div,
+    #[token(":")]
+    Colon,
+    #[regex(r#""[^"]*""#)]
+    StringLiteral,
+    #[regex(r#"'[^']*'"#)]
+    CharLiteral,
+    #[regex(r"[0-9]+")]
+    Int10Literal,
+    #[regex(r"0b[01]+")]
+    Int2Literal,
+    #[regex(r"0o[0-7]+")]
+    Int8Literal,
+    #[regex(r"0x[0-9a-fA-F]+")]
+    Int16Literal,
+
+    #[regex(r"_?[a-zA-Z]+_?")]
+    Ident,
+}
+*/
+
