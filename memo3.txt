@@ -1,0 +1,168 @@
+
+mod parser;
+use anyhow::Result as R;
+use log::*;
+use logos::Logos;
+use simple_logger::SimpleLogger;
+
+#[derive(Logos, Debug, PartialEq)]
+#[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
+enum Token {
+    #[token("(")]
+    LParent,
+    #[token(")")]
+    RParent,
+    #[token("=")]
+    Equal,
+    #[token("+")]
+    Add,
+    #[token("-")]
+    Sub,
+    #[token("*")]
+    Mul,
+    #[token("/")]
+    Div,
+    #[regex(r#""[^"]*""#)]
+    StringLiteral,
+    #[regex(r#"'[^']*'"#)]
+    CharLiteral,
+    #[regex(r"[0-9]+")]
+    Int10Literal,
+    #[regex(r"0b[01]+")]
+    Int2Literal,
+    #[regex(r"0o[0-7]+")]
+    Int8Literal,
+    #[regex(r"0x[0-9a-fA-F]+")]
+    Int16Literal,
+    #[regex("[a-zA-Z]+")]
+    Ident,
+}
+
+#[derive(Debug)]
+enum Node {
+    IntLiteral(i32),
+    Add(Box<Node>, Box<Node>),
+    Sub(Box<Node>, Box<Node>),
+    Mul(Box<Node>, Box<Node>),
+    Div(Box<Node>, Box<Node>),
+}
+
+struct Parser<'a> {
+    lexer: logos::Lexer<'a, Token>,
+    current: Option<Token>,
+}
+
+impl<'a> Parser<'a> {
+    fn new(input: &'a str) -> Self {
+        let mut lexer = Token::lexer(input);
+        let current = lexer.next().and_then(|res| res.ok());
+        Self { lexer, current }
+    }
+
+    fn advance(&mut self) {
+        self.current = self.lexer.next().and_then(|res| res.ok());
+    }
+
+    fn factor(&mut self) -> Option<Node> {
+        if let Some(token) = &self.current {
+            match token {
+                Token::Int10Literal => {
+                    let value = self.lexer.slice().parse::<i32>().ok()?;
+                    self.advance();
+                    Some(Node::IntLiteral(value))
+                }
+                Token::Int16Literal => {
+                    let value = i32::from_str_radix(&self.lexer.slice()[2..], 16).ok()?;
+                    self.advance();
+                    Some(Node::IntLiteral(value))
+                }
+                Token::Int2Literal => {
+                    let value = i32::from_str_radix(&self.lexer.slice()[2..], 2).ok()?;
+                    self.advance();
+                    Some(Node::IntLiteral(value))
+                }
+                Token::Int8Literal => {
+                    let value = i32::from_str_radix(&self.lexer.slice()[2..], 8).ok()?;
+                    self.advance();
+                    Some(Node::IntLiteral(value))
+                }
+                Token::LParent => {
+                    self.advance(); // '(' をスキップ
+                    let value = self.expr(); // 括弧内の式を再帰的に評価
+                    if self.current == Some(Token::RParent) {
+                        self.advance(); // ')' をスキップ
+                        value
+                    } else {
+                        None // エラー: 対応する ')' がない
+                    }
+                }
+                _ => None,
+            }
+        } else {
+            None
+        }
+    }
+
+    fn term(&mut self) -> Option<Node> {
+        let mut value = self.factor(); // Remove the `?` operator here
+        while let Some(token) = &self.current {
+            match token {
+                Token::Mul => {
+                    self.advance();
+                    value = Some(Node::Mul(Box::new(value?), Box::new(self.factor()?))); // Fix `Option<Node>` mismatch
+                }
+                Token::Div => {
+                    self.advance();
+                    value = Some(Node::Div(Box::new(value?), Box::new(self.factor()?))); // Fix `Option<Node>` mismatch
+                }
+                _ => break,
+            }
+        }
+        value // Ensure this returns `Option<Node>`
+    }
+
+    fn expr(&mut self) -> Option<Node> {
+        let mut value = self.term(); // Remove the `?` operator here
+        while let Some(token) = &self.current {
+            match token {
+                Token::Add => {
+                    self.advance();
+                    value = Some(Node::Add(Box::new(value?), Box::new(self.term()?))); // Fix `Option<Node>` mismatch
+                }
+                Token::Sub => {
+                    self.advance();
+                    value = Some(Node::Sub(Box::new(value?), Box::new(self.term()?))); // Fix `Option<Node>` mismatch
+                }
+                _ => break,
+            }
+        }
+        value // Ensure this returns `Option<Node>`
+    }
+}
+
+impl Node {
+    fn eval(&self) -> i32 {
+        match self {
+            Node::IntLiteral(value) => *value,
+            Node::Add(left, right) => left.eval() + right.eval(),
+            Node::Sub(left, right) => left.eval() - right.eval(),
+            Node::Mul(left, right) => left.eval() * right.eval(),
+            Node::Div(left, right) => left.eval() / right.eval(),
+        }
+    }
+}
+
+fn main() -> R<()> {
+    SimpleLogger::new().init()?;
+    let input = "(3 + 5) * (2 + 4)";
+    let mut parser = Parser::new(input);
+
+    if let Some(ast) = parser.expr() {
+        println!("AST: {:?}", ast);
+        println!("Result: {}", ast.eval());
+    } else {
+        println!("Failed to parse expression");
+    }
+
+    Ok(())
+}

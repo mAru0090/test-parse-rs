@@ -1,0 +1,56 @@
+
+use anyhow::Result as R;
+use log::*;
+use logos::Logos;
+use simple_logger::SimpleLogger;
+#[derive(Logos, Debug, PartialEq)]
+#[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
+enum Token {
+    #[token("=")]
+    Equal,
+    #[token("+")]
+    Add,
+    #[token("-")]
+    Sub,
+    #[token("*")]
+    Mul,
+    #[token("/")]
+    Div,
+    #[regex(r#""[^"]*""#)]
+    StringLiteral,
+    #[regex(r#"'[^']*'"#)]
+    CharLiteral,
+    #[regex(r"[0-9]+")]
+    Int10Literal,
+    // 2進数リテラル (例: 0b1010)
+    #[regex(r"0b[01]+")]
+    Int2Literal,
+    // 8進数リテラル (例: 0o755)
+    #[regex(r"0o[0-7]+")]
+    Int8Literal,
+    // 16進数リテラル (例: 0x1A3F)
+    #[regex(r"0x[0-9a-fA-F]+")]
+    Int16Literal,
+    #[regex("[a-zA-Z]+")]
+    Ident,
+}
+
+
+fn main() -> R<()> {
+    let s = SimpleLogger::new();
+    s.init();
+    let input = r#"let a = "aiueo" 'test' let b = 121 let c = 0x11 0b00 0o11 "#;
+    let mut lex = Token::lexer(input);
+
+    // トークンをループで処理して表示
+    while let Some(token) = lex.next() {
+        match token {
+            Ok(t) => {
+                debug!("{:?} - {:?}", t, lex.span());
+                debug!("Slice: {}", lex.slice());
+            }
+            Err(_) => debug!("Error while lexing"),
+        }
+    }
+    Ok(())
+}
