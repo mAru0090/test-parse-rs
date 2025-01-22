@@ -2,7 +2,7 @@ use anyhow::Result as R;
 use log::*;
 use logos::Logos;
 use simple_logger::SimpleLogger;
-#[derive(Logos, Debug, PartialEq)]
+#[derive(Logos, Debug, PartialEq, Clone)]
 #[logos(skip r"[ \t\n\f]+")] // Ignore this regex pattern between tokens
 pub enum Token {
     #[token("(")]
@@ -52,6 +52,11 @@ pub enum Node {
         String,         // 変数名
         Option<String>, // 変数の型 (例: "int", "char"など)
         Box<Node>,      // 代入する値
+    ),
+    // 代入のノード
+    Assignment(
+        String,    // 変数名
+        Box<Node>, // 代入する値
     ),
 }
 

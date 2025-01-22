@@ -37,7 +37,15 @@ fn get_function_name(backtrace: &Backtrace) -> Option<String> {
             .unwrap_or_else(|| "unknown".to_string())
     })
 }
-
+fn extract_char(input: &str) -> Option<char> {
+    // 文字列の長さが3文字以上で、最初と最後がシングルクォートで囲まれているか確認
+    if input.len() == 3 && input.starts_with('\'') && input.ends_with('\'') {
+        // シングルクォート内の文字が1文字だけである場合に、その文字を返す
+        input[1..2].chars().next()
+    } else {
+        None
+    }
+}
 pub struct Parser<'a> {
     lexer: logos::Lexer<'a, Token>,
     current: Option<Token>,
@@ -55,7 +63,22 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_value_assignment(&mut self) -> Option<Node> {
-        None
+        if let Some(token) = &self.current {
+            return match token {
+                Token::Ident => {
+                    let ident = self.lexer.slice();
+                    self.advance(); // ident skip
+                    self.advance(); // = skip
+                    let data_value = self.expr()?;
+                    let value = Some(Node::Assignment(ident.to_string(), Box::new(data_value)));
+                    debug!("Parsed Assignment to -> {:?}", value);
+                    value
+                }
+                _ => None,
+            };
+        } else {
+            None
+        }
     }
     pub fn parse_value_definition(&mut self) -> Option<Node> {
         if let Some(token) = &self.current {
@@ -109,6 +132,27 @@ impl<'a> Parser<'a> {
         false
     }
 
+    pub fn is_assignment_statement(&mut self, ident: &str) -> bool {
+        let mut original_lexer = self.lexer.clone();
+        let mut state = 0;
+        let mut is = false;
+        //panic!("{:?}",original_lexer.next());
+        while let Some(token) = original_lexer.next().and_then(|res| res.ok()) {
+            if !ident.is_empty() && state == 0 {
+                state = 1;
+            }
+            match (state, token) {
+                (1, Token::Equal) => state = 2, // 等号を確認
+                _ => break,                     // その他は無効
+            }
+            if state == 2 && !ident.is_empty() {
+                is = true;
+            }
+        }
+        //panic!("state: {:?}", state);
+        return is;
+        //panic!("state: {:?}", state);
+    }
     pub fn factor(&mut self) -> Option<Node> {
         if let Some(token) = &self.current {
             debug!(
@@ -145,12 +189,9 @@ impl<'a> Parser<'a> {
                 Token::CharLiteral => {
                     let _value = self.lexer.slice();
                     self.advance();
-                    let value = if let Some(c) = _value.chars().next() {
-                        Some(c)
-                    } else {
-                        None
-                    };
-                    Some(Node::CharLiteral(value?))
+                    //panic!("Char literal: {:?}",extract_char(_value));
+                    let value = extract_char(_value)?;
+                    Some(Node::CharLiteral(value))
                 }
                 Token::LParent => {
                     self.advance(); // '(' をスキップ
@@ -165,6 +206,12 @@ impl<'a> Parser<'a> {
                 Token::Ident => {
                     let ident = self.lexer.slice();
                     let value = Some(Node::Ident(ident.to_string()));
+                    // 代入処理
+                    if self.is_assignment_statement(ident) {
+                        let value = self.parse_value_assignment();
+                        return value;
+                    }
+
                     // キーワード処理
                     if Parser::is_keyword_lists(ident) {
                         match ident.as_ref() {
@@ -175,8 +222,6 @@ impl<'a> Parser<'a> {
                             _ => {}
                         }
                     }
-                    // 変数定義,代入処理
-                    //
 
                     self.advance(); // ident をスキップ
                     value
@@ -305,6 +350,14 @@ impl Node {
                 );
                 Some(DataValue::Null)
             }
+            Node::Assignment(var_name, value) => {
+                debug!(
+                    "Assignment statement var_name: {:?} value: {:?}",
+                    var_name, value
+                );
+                Some(DataValue::Null)
+            }
+
             _ => None,
         }
     }
